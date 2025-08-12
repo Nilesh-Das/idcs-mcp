@@ -1,0 +1,17 @@
+{
+    "name": "post_admin_v1_Users",
+    "method": "POST",
+    "url": "https://{{ tenant }}.identity.oraclecloud.com/admin/v1/Users",
+    "headers": {
+      "Authorization": "{{ authorization }}",
+      "RESOURCE_TYPE_SCHEMA_VERSION": "{{ resource_type_schema_version }}",
+      "Content-Type": "{{ content_type }}"
+    },
+    "params": {
+      "attributes": "{{ attributes }}",
+      "attributeSets": "{{ attributesets }}"
+    },
+    "body": {
+      "placeholder": "{{ user_payload }}"
+    }
+  }

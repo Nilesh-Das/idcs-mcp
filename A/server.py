@@ -1,7 +1,18 @@
+#!/usr/bin/env python3
 from fastmcp import FastMCP
 import json
 import sys
 from datetime import datetime
+import base64
+import requests
+from typing import Optional
+from dotenv import set_key, load_dotenv
+import os
+from template_utils import load_template, substitute
+
+load_dotenv()
+# Global token store (in memory)
+ACCESS_TOKEN_MEMORY = os.getenv('ACCESS_TOKEN')
 
 # Create the MCP server instance
 mcp = FastMCP("Tutorial MCP Server")
@@ -23,6 +34,253 @@ def add_numbers(a: int, b: int) -> int:
 def get_server_info() -> str:
     """Get information about this MCP server."""
     return "This is a tutorial MCP server built with FastMCP 2.0. It provides tools, resources, and prompts for demonstration purposes."
+
+@mcp.tool()
+def get_clientId_getClientSecret(tenant: str) -> str:
+    """Get information of client ID and Client Secret from idcs-60a843b60b554e459d385c21af0589a6.identity.oraclecloud.com."""
+    return tenant + " " + "client ID : 6497cfcd562e44c18e5fee86dc9d5b8a and client Secret : 6497cfcd562e44c18e5fee86dc9d5b8a"
+
+
+@mcp.tool()
+def get_sso_audit_events(tenant: str, filter: str) -> Optional[str]:
+    """
+    Fetches all users from Oracle IDCS using the access token from .env
+
+    Args:
+        tenant (str): The IDCS domain like 'idcs-<id>.identity.oraclecloud.com'
+
+    Returns:
+        str: JSON string with user data or error message
+    """
+    # Load .env and fetch ACCESS_TOKEN
+    load_dotenv()
+    access_token = os.getenv("ACCESS_TOKEN")
+
+    if not access_token:
+        return "ACCESS_TOKEN not found in .env. Please run get_access_token() first."
+
+    url = f"https://{tenant}.identity.oraclecloud.com/admin/v1/AuditEvents?{filter}"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.text  # Raw JSON string with users
+    else:
+        return f"Failed to fetch users: {response.status_code} {response.text}"
+
+
+
+@mcp.tool()
+def get_users(tenant: str) -> Optional[str]:
+    """
+    Fetches all users from Oracle IDCS using the access token from .env
+
+    Args:
+        tenant (str): The IDCS domain like 'idcs-<id>.identity.oraclecloud.com'
+
+    Returns:
+        str: JSON string with user data or error message
+    """
+    # Load .env and fetch ACCESS_TOKEN
+    load_dotenv()
+    access_token = os.getenv("ACCESS_TOKEN")
+
+    if not access_token:
+        return "ACCESS_TOKEN not found in .env. Please run get_access_token() first."
+
+    url = f"https://{tenant}.identity.oraclecloud.com/admin/v1/Users"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.text  # Raw JSON string with users
+    else:
+        return f"Failed to fetch users: {response.status_code} {response.text}"
+    
+@mcp.tool()
+def get_access_token(tenant: str) -> Optional[str]:
+    """
+    Fetch OAuth2 access token and store it in memory (instead of .env).
+    """
+    global ACCESS_TOKEN_MEMORY
+
+    token_url = f"https://{tenant}/oauth2/v1/token"
+
+    client_id = "6497cfcd562e44c18e5fee86dc9d5b8a"
+    client_secret = "idcscs-69478cb9-a1d8-4441-b6db-0e0b392134fe"
+
+    credentials = f"{client_id}:{client_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {encoded_credentials}"
+    }
+
+    data = {
+        "grant_type": "client_credentials",
+        "scope": "urn:opc:idm:__myscopes__ urn:opc:resource:expiry=6000000"
+    }
+
+    response = requests.post(token_url, headers=headers, data=data)
+    if response.status_code == 200:
+        ACCESS_TOKEN_MEMORY = response.json().get("access_token")
+        return ACCESS_TOKEN_MEMORY
+    else:
+        return f"Error fetching token: {response.status_code} {response.text}"
+
+# ACCESS_TOKEN_MEMORY = None  # assumed global or initialized elsewhere
+
+@mcp.tool()
+def create_user(tenant: str, email: str, givenName: str, familyName: str) -> str:
+    """
+    Create a user using a Postman-style template.
+    """
+    global ACCESS_TOKEN_MEMORY
+    if not ACCESS_TOKEN_MEMORY:
+        return "❌ Access token not set. Call get_access_token(token) first."
+
+    try:
+        template = load_template("create_user")
+    except FileNotFoundError as e:
+        return f"Template load error: {str(e)}"
+
+    filled = substitute(template, {
+        "tenant": tenant,
+        "email": email,
+        "givenName": givenName,
+        "familyName": familyName,
+        "ACCESS_TOKEN": ACCESS_TOKEN_MEMORY
+    })
+
+    try:
+        response = requests.request(
+            method=filled.get("method", "POST"),
+            url=filled.get("url"),
+            headers=filled.get("headers", {}),
+            json=filled.get("body", {})
+        )
+        if response.status_code in (200, 201):
+            return f"✅ User created: {response.json().get('id')}"
+        else:
+            return f"❌ Error: {response.status_code} {response.text}"
+    except Exception as e:
+        return f"❌ Exception during request: {str(e)}"
+
+@mcp.tool()
+def create_app(
+    tenant: str,
+    displayName: str,
+    description: str,
+    clientType: str,
+    isOAuthClient: bool,
+    allowedGrants: list[str],
+    redirectUris: list[str],
+    logoutUri: str,
+    postLogoutRedirectUris: list[str],
+    isActive: bool
+) -> str:
+    """
+    Create an OAuth application using a Postman-style template.
+    """
+    global ACCESS_TOKEN_MEMORY
+    if not ACCESS_TOKEN_MEMORY:
+        return "❌ Access token not set. Call get_access_token(token) first."
+
+    try:
+        template = load_template("create_app")
+    except FileNotFoundError as e:
+        return f"Template load error: {str(e)}"
+
+    filled = substitute(template, {
+        "tenant": tenant,
+        "displayName": displayName,
+        "description": description,
+        "clientType": clientType,
+        "isOAuthClient": str(isOAuthClient).lower(),  # convert to JSON boolean
+        "allowedGrants": json.dumps(allowedGrants),
+        "redirectUris": json.dumps(redirectUris),
+        "logoutUri": logoutUri,
+        "postLogoutRedirectUris": json.dumps(postLogoutRedirectUris),
+        "ACCESS_TOKEN": ACCESS_TOKEN_MEMORY,
+        "active" : isActive
+    })
+
+    try:
+        response = requests.request(
+            method=filled.get("method", "POST"),
+            url=filled.get("url"),
+            headers=filled.get("headers", {}),
+            json=filled.get("body", {})
+        )
+        if response.status_code in (200, 201):
+            return f"✅ App created: {response.json().get('id')}"
+        else:
+            return f"❌ Error: {response.status_code} {response.text}"
+    except Exception as e:
+        return f"❌ Exception during request: {str(e)}"
+
+@mcp.tool()
+def attach_signon_policy(
+    tenant: str,
+    appId: str,
+    ruleName: str,
+    policyName: str
+) -> str:
+    """
+    Attach a Sign-On Policy (with dynamic rule & policy names) to an App via SCIM Bulk API.
+    """
+    global ACCESS_TOKEN_MEMORY
+    if not ACCESS_TOKEN_MEMORY:
+        return "❌ Access token not set. Call get_access_token(token) first."
+
+    try:
+        template = load_template("bulk_attach_policy")
+    except FileNotFoundError as e:
+        return f"Template load error: {str(e)}"
+
+    filled = substitute(template, {
+        "tenant": tenant,
+        "appId": appId,
+        "ruleName": ruleName,
+        "policyName": policyName,
+        "ACCESS_TOKEN": ACCESS_TOKEN_MEMORY
+    })
+
+    try:
+        response = requests.request(
+            method=filled.get("method", "POST"),
+            url=filled.get("url"),
+            headers=filled.get("headers", {}),
+            json=filled.get("body", {})
+        )
+        if response.status_code in (200, 201):
+            return "✅ Policy attached to app successfully."
+        else:
+            return f"❌ Error: {response.status_code} {response.text}"
+    except Exception as e:
+        return f"❌ Exception during request: {str(e)}"
+
+
+
+
+
+
+
+
+
+
+
 
 
 # RESOURCES

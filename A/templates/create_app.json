@@ -1,0 +1,21 @@
+{
+  "method": "POST",
+  "url": "https://{{ tenant }}.identity.oraclecloud.com/admin/v1/Apps",
+  "headers": {
+    "Authorization": "Bearer {{ ACCESS_TOKEN }}",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "schemas": ["urn:ietf:params:scim:schemas:oracle:idcs:App"],
+    "basedOnTemplate": { "value": "CustomWebAppTemplateId" },
+    "displayName": "{{ displayName }}",
+    "description": "{{ description }}",
+    "clientType": "{{ clientType }}",
+    "isOAuthClient": true,
+    "active": true,
+    "allowedGrants": {{ allowedGrants }},
+    "redirectUris": {{ redirectUris }},
+    "logoutUri": "{{ logoutUri }}",
+    "postLogoutRedirectUris": {{ postLogoutRedirectUris }}
+  }
+}

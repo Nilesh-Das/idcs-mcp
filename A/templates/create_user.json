@@ -1,0 +1,29 @@
+{
+  "method": "POST",
+  "url": "https://{{ tenant }}/admin/v1/Users",
+  "headers": {
+    "Authorization": "Bearer {{ ACCESS_TOKEN }}",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "name": {
+      "givenName": "{{ givenName }}",
+      "familyName": "{{ familyName }}"
+    },
+    "userName": "{{ email }}",
+    "password": "Welcome@123456",
+    "emails": [
+      {
+        "value": "{{ email }}",
+        "type": "work",
+        "primary": true
+      },
+      {
+        "value": "{{ email }}",
+        "type": "recovery",
+        "primary": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,84 @@
+{
+    "method": "POST",
+    "url": "https://{{ tenant }}.identity.oraclecloud.com/admin/v1/Bulk",
+    "headers": {
+      "Authorization": "Bearer {{ ACCESS_TOKEN }}",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "schemas": ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+      "Operations": [
+        {
+          "bulkId": "idps",
+          "method": "POST",
+          "path": "/Conditions",
+          "data": {
+            "attributeValue": "[\"UserNamePassword\"]",
+            "schemas": ["urn:ietf:params:scim:schemas:oracle:idcs:Condition"],
+            "name": "authenticated by IDPs",
+            "attributeName": "subject.authenticatedBy",
+            "operator": "in"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/Rules",
+          "bulkId": "mfaruleId",
+          "data": {
+            "conditionGroup": {
+              "value": "bulkId:idps",
+              "type": "Condition"
+            },
+            "schemas": ["urn:ietf:params:scim:schemas:oracle:idcs:Rule"],
+            "id": "MFARule",
+            "name": "{{ ruleName }}",
+            "policyType": { "value": "SignOn" },
+            "return": [
+              { "name": "effect", "value": "ALLOW" },
+              { "name": "reAuthenticate", "value": "false" },
+              { "name": "authenticationFactor", "value": "IDP+2FA" },
+              { "name": "2FAFactors", "value": "[\"TOTP\",\"PUSH\",\"FIDO_AUTHENTICATOR\",\"BYPASSCODE\"]" },
+              { "name": "allowUserToSkip2FAEnrolment", "value": "false" },
+              { "name": "2FAFrequency", "value": "ALWAYS" }
+            ]
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/Policies",
+          "bulkId": "policies",
+          "data": {
+            "schemas": ["urn:ietf:params:scim:schemas:oracle:idcs:Policy"],
+            "id": "McpPolicy",
+            "name": "{{ policyName }}",
+            "description": "The Security Defaults to secure OCI Console",
+            "policyType": { "value": "SignOn" },
+            "idcsPreventedOperations": ["delete"],
+            "active": true,
+            "rules": [
+              {
+                "value": "bulkId:mfaruleId",
+                "sequence": 1
+              }
+            ]
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/Apps/{{ appId }}",
+          "data": {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+            "Operations": [
+              {
+                "op": "add",
+                "path": "signonPolicy",
+                "value": {
+                  "value": "bulkId:policies"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
