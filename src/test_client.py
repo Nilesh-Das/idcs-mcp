@@ -2,8 +2,12 @@
 """Command-line interface for FastMCP Tutorial Server."""
 
 import argparse
+from asyncio.log import logger
 import sys
+
+from fastmcp import Client
 from src import mcp
+from fastmcp.client.transports import StreamableHttpTransport
 
 
 async def call_mcp_tool(url: str, tool_name: str, parameters: dict) -> dict:
