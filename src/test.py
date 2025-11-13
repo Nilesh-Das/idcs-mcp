@@ -3,7 +3,7 @@
 import asyncio
 import json
 from fastmcp import Client
-from A import mcp
+from server import mcp
 from fastmcp.client.transports import StreamableHttpTransport
 
 

@@ -1,4 +1,8 @@
-# MCP Test
+# IDCS-MCP
+
+
+## Build and Run Test
+
 Clone the repo:
 `git clone ssh://git@bitbucket.oci.oraclecorp.com:7999/~niledas/idcs-mcp.git`
 
@@ -9,10 +13,10 @@ uv sync
 ```
 
 Running server using streamable-http:
-`uv run A/server.py`
+`uv run src/server.py`
 
 Running tests:
-`uv run python -m A.test`
+`uv run src/test.py`
 
 ## How to run using MCP Host
 
@@ -28,7 +32,7 @@ Connect to MCP server using below `claude_desktop_config.json`:
       "command": "uv",
       "args": [
       	"run",
-        "A/server.py"
+        "src/server.py"
       ],
       "cwd": "/home/user/MCP/idcs-mcp"
     }
@@ -40,7 +44,7 @@ Restart Claude Desktop and you'll see MCP server context under prompt tools.
 
 ## How to contribute
 
-Open PR
+Open Issue and PR Fix
 
 ## License
 

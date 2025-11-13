@@ -3,7 +3,7 @@
 
 import argparse
 import sys
-from .server import mcp
+from src import mcp
 
 
 async def call_mcp_tool(url: str, tool_name: str, parameters: dict) -> dict:
@@ -33,8 +33,8 @@ async def call_mcp_tool(url: str, tool_name: str, parameters: dict) -> dict:
         else:
             raise ValueError(f"Tool '{tool_name}' not found on the server.")
 
-result = asyncio.run(call_mcp_tool(args.url, tool.name, {}))
-        print(Pretty(result))
+    result = asyncio.run(call_mcp_tool(args.url, tool.name, {}))
+    print(Pretty(result))
 
 def main():
     """Main CLI entry point."""
